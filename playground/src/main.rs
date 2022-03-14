@@ -25,23 +25,8 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::GetPPID {} => {
-            println!("Get PPID. Ctrl + C to stop. ");
-            loop {
-                nix::unistd::getppid();
-            }
-        }
-        Commands::Fork {} => match unsafe { fork() } {
-            Ok(ForkResult::Parent { child, .. }) => {
-                println!(
-                    "I'm parent! my pid is {} and the pid of my child is {}.",
-                    getpid(),
-                    child
-                );
-            }
-            Ok(ForkResult::Child) => println!("I'm child! my pid is {}.", getpid()),
-            Err(_) => eprintln!("fork() failed."),
-        },
+        Commands::GetPPID {} => playground::ppid::getppid(),
+        Commands::Fork {} => playground::fork::fork(),
         Commands::ForkAndExec {} => match unsafe { fork() } {
             Ok(ForkResult::Parent { child, .. }) => {
                 println!(
