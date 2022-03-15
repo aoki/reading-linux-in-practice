@@ -101,11 +101,11 @@ int main(int argc, char *argv[])
     err(EXIT_FAILURE, "malloc(logbuf) failed");
   }
 
-  puts("estimating workload which takes just one millisecond");
+  // puts("estimating workload which takes just one millisecond");
 
   unsigned long nloop_per_resol = loops_per_msec() * resol;
 
-  puts("end estimation");
+  // puts("end estimation");
   fflush(stdout);
 
   pids = malloc(nproc * sizeof(pid_t));
