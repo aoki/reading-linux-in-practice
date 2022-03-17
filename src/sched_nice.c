@@ -74,17 +74,16 @@ int main(int argc, char *argv[])
 {
   int ret = EXIT_FAILURE;
 
-  if (argc < 4)
+  if (argc < 3)
   {
-    fprintf(stderr, "usage: %s <nproc> <total[ms]> <resolution[ms]>\n", argv[0]);
+    fprintf(stderr, "usage: %s <total[ms]> <resolution[ms]>\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
-  int nproc = atoi(argv[1]);
-  int total = atoi(argv[2]);
-  int resol = atoi(argv[3]);
+  int nproc = 2;
+  int total = atoi(argv[1]);
+  int resol = atoi(argv[2]);
 
-  arg_validation(nproc, "nproc");
   arg_validation(total, "total");
   arg_validation(resol, "resol");
 
@@ -129,6 +128,10 @@ int main(int argc, char *argv[])
     else if (pids[i] == 0)
     {
       // children
+      if (i == 1)
+      {
+        nice(5);
+      }
       child_fn(i, logbuf, nrecord, nloop_per_resol, start);
       /* shouldn't reach here */
     }
