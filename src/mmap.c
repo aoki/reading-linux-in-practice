@@ -13,7 +13,7 @@ int main(void)
 {
   pid_t pid;
   pid = getpid();
-  sprintf(command, BUFFER_SIZE, "cat /proc/%d/maps", pid);
+  snprintf(command, BUFFER_SIZE, "cat /proc/%d/maps", pid);
 
   puts("*** memory map before memory allocation ***");
   fflush(stdout);
@@ -28,6 +28,9 @@ int main(void)
 
   puts("");
   printf("*** succeeded to allocate memory: address = %p; size = 0x%x ***", new_memory, ALLOC_SIZE);
+  puts("");
+
+  puts("*** memory map after memory allocation ***");
   fflush(stdout);
   system(command);
 
