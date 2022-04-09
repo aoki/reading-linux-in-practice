@@ -1,7 +1,7 @@
 use nix::unistd::{execve, fork, getpid, ForkResult};
 use std::ffi::CString;
 
-pub fn fork_and_exec() {
+fn main() {
     match unsafe { fork() } {
         Ok(ForkResult::Parent { child, .. }) => {
             println!(

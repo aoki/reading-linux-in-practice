@@ -1,6 +1,6 @@
 use nix::unistd::{getpid, ForkResult};
 
-pub fn fork() {
+fn main() {
     match unsafe { nix::unistd::fork() } {
         Ok(ForkResult::Parent { child, .. }) => {
             println!(

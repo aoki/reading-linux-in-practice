@@ -1,10 +1,8 @@
-// does not work
 fn main() {
-    let p: *mut i32 = std::ptr::null();
+    let p = std::ptr::null_mut::<i32>();
     println!("before invalid access");
-    let q: *mut i32 = 1 as *mut i32;
     unsafe {
-        p = q;
+        p.write(0);
     }
     println!("after invalid access");
     std::process::exit(nix::libc::EXIT_SUCCESS);
