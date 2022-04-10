@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "3.1.6", features = ["derive"] }
 nix = "0.23.1"
+
+[[bin]]
+name = "sched"
+path = "src/sched.rs"
