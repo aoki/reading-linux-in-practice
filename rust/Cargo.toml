@@ -10,3 +10,7 @@ nix = "0.23.1"
 [[bin]]
 name = "sched"
 path = "src/sched.rs"
+
+[[bin]]
+name = "sched_nice"
+path = "src/sched_nice.rs"
