@@ -1,14 +1,57 @@
-use nix::libc::EXIT_FAILURE;
+use nix::{
+    libc::EXIT_FAILURE,
+    sys::time::TimeSpec,
+    time::{clock_gettime, ClockId},
+    unistd::Pid,
+};
 use std::{env, process::exit};
 
-#[inline]
+const NLOOP_FOR_ESTIMATION: usize = 1_000_000_000;
+const NSECS_PER_MSEC: usize = 1_000_000;
+const NSECS_PER_SEC: usize = 1_000_000_000;
+
+fn get_time() -> TimeSpec {
+    match clock_gettime(ClockId::CLOCK_MONOTONIC) {
+        Ok(time) => time,
+        Err(e) => {
+            eprintln!("clock_gettime() failed {:?}", e);
+            std::process::exit(EXIT_FAILURE);
+        }
+    }
+}
+
+// 2つの TimeSpec の差分を計算しナノ秒で返却します
+fn diff_nsec(before: TimeSpec, after: TimeSpec) -> usize {
+    (after.tv_sec() as usize * NSECS_PER_SEC + after.tv_nsec() as usize)
+        - (before.tv_sec() as usize * NSECS_PER_SEC + before.tv_nsec() as usize)
+}
+
+/// CPU時間を 1ms 使う処理に必要なループ回数を推定します
+fn loops_per_msec() -> usize {
+    let before = get_time();
+
+    // リリースビルドしてしまうと最適化がかかり機能しなくなる
+    for _ in 0..NLOOP_FOR_ESTIMATION {}
+
+    let after = get_time();
+
+    // ループ回数をかかった時間(diff_nsec) でわり、1nsあたりのループ回数を計算し、NSECS_PER_MSECを掛け、単位をmsにする
+    NLOOP_FOR_ESTIMATION * NSECS_PER_MSEC / diff_nsec(before, after)
+}
+
 /// 与えられた引数を `usize` に変換します。
 /// 変換に失敗した場合は、エラーを表示し終了します。
 fn arg_validation(arg: &String, argname: &str) -> usize {
     match arg.parse::<usize>() {
-        Ok(r) => r,
+        Ok(r) => {
+            if r < 1 {
+                eprintln!("<{}>({}) should be >= 1", argname, arg);
+                std::process::exit(EXIT_FAILURE);
+            }
+            r
+        }
         Err(e) => {
-            eprintln!("<{}>({}) should be >= 1: {:?}", argname, arg, e);
+            eprintln!("<{}>({}) should be number: {:?}", argname, arg, e);
             std::process::exit(EXIT_FAILURE);
         }
     }
@@ -39,7 +82,16 @@ fn main() {
             total, resol
         );
     }
+    // 計測するレコード数を計算する
+    // 100ms を 10ms 単位で計測する場合は、10 レコードとなる
     let nrecord = total / resol;
 
+    // 1ms にかかるループ回数を計測し、それを解像度(ms)に合わせる
+    let nloop_per_resol = loops_per_msec() * resol;
+
+    let mut logbuf: Vec<TimeSpec> = Vec::<TimeSpec>::with_capacity(nrecord);
+    let mut pids = Vec::<Pid>::with_capacity(nproc);
+
+    let start = get_time();
     todo!();
 }

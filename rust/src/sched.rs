@@ -59,37 +59,31 @@ fn diff_nsec(before: TimeSpec, after: TimeSpec) -> usize {
         - (before.tv_sec() as usize * NSECS_PER_SEC + before.tv_nsec() as usize)
 }
 
+/// CPU時間を1ms使う処理に必要な計算の量を推定する
 fn loops_per_msec() -> Result<usize, Error> {
-    let before = match clock_gettime(ClockId::CLOCK_MONOTONIC) {
-        Ok(time) => time,
-        Err(e) => {
-            eprintln!("clock_gettime() failed {:?}", e);
-            std::process::exit(EXIT_FAILURE);
-        }
-    };
+    let before = get_time();
 
-    let mut i = 0;
-    for _ in 0..NLOOP_FOR_ESTIMATION {
-        i = i + 1;
-    }
+    // リリースビルドしてしまうと最適化がかかり機能しなくなる
+    for _ in 0..NLOOP_FOR_ESTIMATION {}
 
-    let after = match clock_gettime(ClockId::CLOCK_MONOTONIC) {
-        Ok(time) => time,
-        Err(e) => {
-            eprintln!("clock_gettime() failed {:?}", e);
-            std::process::exit(EXIT_FAILURE);
-        }
-    };
+    let after = get_time();
 
+    // ループ回数をかかった時間(diff_nsec) でわり、1nsあたりのループ回数を計算し、NSECS_PER_MSECを掛け、単位をmsにする
     Ok(NLOOP_FOR_ESTIMATION * NSECS_PER_MSEC / diff_nsec(before, after))
 }
 
 #[inline]
 fn arg_validation(arg: &String, argname: &str) -> usize {
     match arg.parse::<usize>() {
-        Ok(a) => a,
-        Err(_) => {
-            eprintln!("<{}>({}) should be >= 1", argname, arg);
+        Ok(a) => {
+            if a < 1 {
+                eprintln!("<{}>({}) should be >= 1", argname, arg);
+                std::process::exit(EXIT_FAILURE);
+            }
+            a
+        }
+        Err(e) => {
+            eprintln!("<{}>({}) should be number: {:?}", argname, arg, e);
             std::process::exit(EXIT_FAILURE);
         }
     }

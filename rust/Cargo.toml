@@ -8,9 +8,17 @@ clap = { version = "3.1.6", features = ["derive"] }
 nix = "0.23.1"
 
 [[bin]]
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
 name = "sched"
 path = "src/sched.rs"
 
 [[bin]]
 name = "sched_nice"
 path = "src/sched_nice.rs"
+
+
+[profile.release]
+opt-level = 1
