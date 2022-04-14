@@ -127,17 +127,20 @@ fn main() {
 
     let mut ncreated = 0;
     for i in 0..nproc {
-        ncreated += 1;
         match unsafe { nix::unistd::fork() } {
             Ok(ForkResult::Parent { child, .. }) => {
                 pids.push(child);
             }
             Ok(ForkResult::Child) => {
-                unsafe { nice(5) };
+                // 最初に作成したプロセスだけ nice を変更
+                if ncreated == 0 {
+                    unsafe { nice(5) };
+                }
                 child_fn(i, &mut logbuf, nrecord, nloop_per_resol, start);
             }
             Err(_) => eprintln!("fork() failed."),
         }
+        ncreated += 1;
     }
 
     ret = EXIT_SUCCESS;
