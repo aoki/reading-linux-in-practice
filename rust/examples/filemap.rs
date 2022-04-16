@@ -65,6 +65,7 @@ fn main() {
             std::ptr::null_mut(),
             ALLOC_SIZE,
             ProtFlags::PROT_READ | ProtFlags::PROT_WRITE,
+            // MapFlags::MAP_PRIVATE,
             MapFlags::MAP_SHARED,
             fd,
             0,
