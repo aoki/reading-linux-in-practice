@@ -46,26 +46,50 @@ fn display_memorymap(pid: Pid) {
     }
 }
 
-fn main() {
-    let pid = getpid();
-
-    println!("*** memory map before mapping file ***");
-    display_memorymap(pid);
-
-    let fd = match open("testfile", OFlag::O_RDWR, Mode::empty()) {
+fn open_file(file_name: &str) -> i32 {
+    match open(file_name, OFlag::O_RDWR, Mode::empty()) {
         Ok(fd) => fd,
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(EXIT_FAILURE)
         }
-    };
+    }
+}
 
+/// # ファイルマップの動作確認プログラム
+/// - ファイルが仮想アドレス空間にマップされていること
+/// - マップされた領域の読み出しによって、ファイルを読み出せること
+/// - マップされた領域への書き込みによって、ファイルに書き込めること
+///
+/// ## 仕様
+/// 1. プロセスのメモリマップ情報を出力
+/// 2. `testfile` ファイルを開く
+/// 3. ファイルを `mmap()` によってメモリ空間にマップする
+/// 4. プロセスのメモリマップ情報を再度表示する
+/// 5. マップされた領域のデータを読み出して出力する
+/// 6. マップされた領域のデータを書き換える
+///
+/// ## Usage
+/// ```shellsession
+/// $ printf "hello world" > testfile; cargo run --example filemap
+/// ```
+fn main() {
+    let pid = getpid();
+
+    // 1. プロセスのメモリマップ情報を出力
+    println!("*** memory map before mapping file ***");
+    display_memorymap(pid);
+
+    // 2. `testfile` ファイルを開く
+    let fd = open_file("testfile");
+
+    // 3. ファイルを `mmap()` によってメモリ空間にマップする
+    // `MapFlags::MAP_PRIVATE` を指定すると、メモリからファイルに書き戻さない,
     let file_contents = unsafe {
         mmap(
             std::ptr::null_mut(),
             ALLOC_SIZE,
             ProtFlags::PROT_READ | ProtFlags::PROT_WRITE,
-            // MapFlags::MAP_PRIVATE,
             MapFlags::MAP_SHARED,
             fd,
             0,
@@ -87,29 +111,18 @@ fn main() {
         ALLOC_SIZE
     );
 
+    // 4. プロセスのメモリマップ情報を再度表示する
     println!("*** memory map after mapping file ***");
     display_memorymap(pid);
 
+    // 5. マップされた領域のデータを読み出して出力する
     println!(
         "*** file contents before overwrite mapped region: {} ***",
         file_contents
     );
-    unsafe {
-        // https://totem3.hatenablog.jp/entry/2018/08/20/214313
-        // let program: *mut u8;
-        // program = std::mem::transmute(file_contents.as_ptr());
-        // println!("BEF: {:?}", program);
-        // println!(
-        //     "BEF: {}",
-        //     CStr::from_ptr(program as *const _).to_string_lossy()
-        // );
-        // program.copy_from(OVERWRITE_DATA.as_ptr(), OVERWRITE_DATA.len());
-        // println!("AFT: {:?}", program);
-        // println!(
-        //     "AFT: {}",
-        //     CStr::from_ptr(program as *const _).to_string_lossy()
-        // );
 
+    // 6. マップされた領域のデータを書き換える
+    unsafe {
         memcpy(
             file_contents.as_ptr() as *mut c_void,
             OVERWRITE_DATA.as_ptr() as *const c_void,
@@ -126,4 +139,6 @@ fn main() {
     }
 
     close_file(fd);
+
+    std::process::exit(EXIT_SUCCESS);
 }
