@@ -20,10 +20,12 @@ static void child_fn(char *p)
   fflush(stdout);
   snprintf(command, COMMAND_SIZE, "ps -o pid,comm,vsz,rss,min_flt,maj_flt | grep '^ *%d'", getpid());
   system(command);
+  printf("\n\n");
 
   printf("*** free memory info before memory access ***:\n");
   fflush(stdout);
   system("free");
+  printf("\n\n");
 
   int i;
   for (i = 0; i < BUFFER_SIZE; i += PAGE_SIZE)
@@ -34,10 +36,12 @@ static void child_fn(char *p)
   printf("*** child ps info after memory access ***:\n");
   fflush(stdout);
   system(command);
+  printf("\n\n");
 
   printf("*** free memory info after memory access ***:\n");
   fflush(stdout);
   system("free");
+  printf("\n\n");
 
   exit(EXIT_SUCCESS);
 }
@@ -53,6 +57,7 @@ int main(void)
   printf("*** free memory info before malloc ***:\n");
   fflush(stdout);
   system("free");
+  printf("\n\n");
 
   char *buf;
   p = malloc(BUFFER_SIZE);
@@ -60,6 +65,7 @@ int main(void)
   printf("*** free memory info before memory access ***:\n");
   fflush(stdout);
   system("free");
+  printf("\n\n");
 
   if (p == NULL)
   {
@@ -74,6 +80,7 @@ int main(void)
   printf("*** free memory info before fork ***:\n");
   fflush(stdout);
   system("free");
+  printf("\n\n");
 
   pid_t ret;
   ret = fork();
