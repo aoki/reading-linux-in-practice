@@ -1,5 +1,9 @@
 use anyhow::{anyhow, bail};
-use nix::libc::{malloc, EXIT_FAILURE};
+use nix::{
+    libc::{malloc, EXIT_FAILURE, EXIT_SUCCESS},
+    sys::wait::wait,
+    unistd::{fork, ForkResult},
+};
 use std::{ffi::c_void, process::Command};
 
 const BUFFER_SIZE: usize = 100 * 1024 * 1024;
@@ -62,4 +66,27 @@ fn main() {
 
     println!("*** free memory info before fork ***:");
     display_memory_state();
+
+    match unsafe { fork() } {
+        Ok(ForkResult::Parent { .. }) => parent_fn(),
+        Ok(ForkResult::Child) => child_fn(),
+        Err(e) => {
+            eprintln!("fork() failed.: {}", e);
+            std::process::exit(EXIT_FAILURE)
+        }
+    }
+}
+
+fn child_fn() {
+    todo!()
+}
+
+fn parent_fn() {
+    match wait() {
+        Err(e) => {
+            eprintln!("wait() failed: {:?}", e);
+            std::process::exit(EXIT_FAILURE);
+        }
+        Ok(_) => std::process::exit(EXIT_SUCCESS),
+    }
 }
