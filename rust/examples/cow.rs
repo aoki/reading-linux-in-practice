@@ -2,9 +2,13 @@ use anyhow::{anyhow, bail};
 use nix::{
     libc::{malloc, EXIT_FAILURE, EXIT_SUCCESS},
     sys::wait::wait,
-    unistd::{fork, ForkResult},
+    unistd::{fork, getpid, ForkResult},
 };
-use std::{ffi::c_void, process::Command};
+use std::{
+    ffi::c_void,
+    os::unix::prelude::{AsRawFd, FromRawFd},
+    process::{Command, Stdio},
+};
 
 const BUFFER_SIZE: usize = 100 * 1024 * 1024;
 
@@ -78,7 +82,34 @@ fn main() {
 }
 
 fn child_fn() {
-    todo!()
+    println!("*** child({}) ps info before memory access ***:", getpid());
+    let ps = Command::new("ps")
+        .args(["-o", "pid,comm,vsz,rss,min_flt,maj_flt"])
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed to execute ps");
+
+    let grep = Command::new("grep")
+        .arg(format!("'^ *{}'", getpid()))
+        .stdin(unsafe { Stdio::from_raw_fd(ps.stdout.as_ref().unwrap().as_raw_fd()) })
+        .output()
+        .map_err(|e| anyhow!(e))
+        .and_then(|ret| match ret.status.success() {
+            true => String::from_utf8(ret.stdout).map_err(|e| anyhow!(e)),
+            false => String::from_utf8(ret.stderr)
+                .map_err(|e| anyhow!(e))
+                .and_then(|std_err| bail!(std_err)),
+        });
+    match grep {
+        Ok(stdout) => println!("{}", stdout),
+        Err(stderr) => {
+            eprintln!("{}", stderr);
+            std::process::exit(EXIT_FAILURE);
+        }
+    }
+
+    println!("*** free memory info before memory access ***:");
+    display_memory_state();
 }
 
 fn parent_fn() {
