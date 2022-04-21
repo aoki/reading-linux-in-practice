@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail};
 use nix::{
     libc::{malloc, EXIT_FAILURE, EXIT_SUCCESS},
     sys::wait::wait,
-    unistd::{fork, getpid, ForkResult},
+    unistd::{fork, getpid, ForkResult, Pid},
 };
 use std::{
     ffi::c_void,
@@ -11,6 +11,7 @@ use std::{
 };
 
 const BUFFER_SIZE: usize = 100 * 1024 * 1024;
+const PAGE_SIZE: usize = 4096;
 
 fn display_memory_state() {
     let res = Command::new("free")
@@ -62,7 +63,7 @@ fn main() {
         std::process::exit(EXIT_FAILURE);
     }
 
-    for i in 0..BUFFER_SIZE {
+    for i in 0..(BUFFER_SIZE / PAGE_SIZE) {
         unsafe {
             p.offset(i as isize).write_bytes(0, 1);
         }
@@ -73,7 +74,7 @@ fn main() {
 
     match unsafe { fork() } {
         Ok(ForkResult::Parent { .. }) => parent_fn(),
-        Ok(ForkResult::Child) => child_fn(),
+        Ok(ForkResult::Child) => child_fn(p),
         Err(e) => {
             eprintln!("fork() failed.: {}", e);
             std::process::exit(EXIT_FAILURE)
@@ -81,8 +82,7 @@ fn main() {
     }
 }
 
-fn child_fn() {
-    println!("*** child({}) ps info before memory access ***:", getpid());
+fn grep(pid: Pid) {
     let ps = Command::new("ps")
         .args(["-o", "pid,comm,vsz,rss,min_flt,maj_flt"])
         .stdout(Stdio::piped())
@@ -90,7 +90,7 @@ fn child_fn() {
         .expect("failed to execute ps");
 
     let grep = Command::new("grep")
-        .arg(format!("'^ *{}'", getpid()))
+        .arg(format!("'^ *{}'", pid))
         .stdin(unsafe { Stdio::from_raw_fd(ps.stdout.as_ref().unwrap().as_raw_fd()) })
         .output()
         .map_err(|e| anyhow!(e))
@@ -107,9 +107,28 @@ fn child_fn() {
             std::process::exit(EXIT_FAILURE);
         }
     }
+}
+
+fn child_fn(p: *mut c_void) {
+    println!("*** child({}) ps info before memory access ***:", getpid());
+    grep(getpid());
 
     println!("*** free memory info before memory access ***:");
     display_memory_state();
+
+    for i in 0..(BUFFER_SIZE / PAGE_SIZE) {
+        unsafe {
+            p.offset(i as isize).write_bytes(0, 1);
+        }
+    }
+
+    println!("*** child ps info after memory access ***:");
+    grep(getpid());
+
+    println!("*** free memory info after memory access ***:");
+    display_memory_state();
+
+    std::process::exit(EXIT_SUCCESS)
 }
 
 fn parent_fn() {
