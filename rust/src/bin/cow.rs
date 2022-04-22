@@ -47,7 +47,7 @@ fn display_memory_state() {
 ///       2. 最初に獲得した領域のすべてのページにアクセス
 ///       3. システムのメモリ使用量、および自身の仮想メモリ使用量、物理メモリ使用量、メジャーフォルトの回数、マイナーフォールとの回数を表示
 fn main() {
-    println!("*** free memory info before malloc ***:");
+    println!("*** free memory info before malloc ***: {}", getpid());
     display_memory_state();
 
     let p: *mut c_void;
@@ -85,23 +85,23 @@ fn main() {
 fn grep(pid: Pid) {
     let ps = Command::new("ps")
         .args(["-o", "pid,comm,vsz,rss,min_flt,maj_flt"])
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("failed to execute ps");
+        // .stdout(Stdio::piped())
+        .spawn();
+    // .expect("failed to execute ps");
 
-    let grep = Command::new("grep")
-        .arg(format!("'^ *{}'", pid))
-        .stdin(unsafe { Stdio::from_raw_fd(ps.stdout.as_ref().unwrap().as_raw_fd()) })
-        .output()
-        .map_err(|e| anyhow!(e))
-        .and_then(|ret| match ret.status.success() {
-            true => String::from_utf8(ret.stdout).map_err(|e| anyhow!(e)),
-            false => String::from_utf8(ret.stderr)
-                .map_err(|e| anyhow!(e))
-                .and_then(|std_err| bail!(std_err)),
-        });
-    match grep {
-        Ok(stdout) => println!("{}", stdout),
+    // let grep = Command::new("grep")
+    //     .arg(format!("'^ *{}'", pid))
+    //     .stdin(unsafe { Stdio::from_raw_fd(ps.stdout.as_ref().unwrap().as_raw_fd()) })
+    //     .output()
+    //     .map_err(|e| anyhow!(e))
+    //     .and_then(|ret| match ret.status.success() {
+    //         true => String::from_utf8(ret.stdout).map_err(|e| anyhow!(e)),
+    //         false => String::from_utf8(ret.stderr)
+    //             .map_err(|e| anyhow!(e))
+    //             .and_then(|std_err| bail!(std_err)),
+    //     });
+    match ps {
+        Ok(stdout) => println!("{:?}", stdout),
         Err(stderr) => {
             eprintln!("{}", stderr);
             std::process::exit(EXIT_FAILURE);
@@ -118,7 +118,7 @@ fn child_fn(p: *mut c_void) {
 
     for i in 0..(BUFFER_SIZE / PAGE_SIZE) {
         unsafe {
-            p.offset(i as isize).write_bytes(0, 1);
+            p.offset(i as isize).write_bytes(0, PAGE_SIZE);
         }
     }
 
