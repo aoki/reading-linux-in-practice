@@ -6,7 +6,6 @@ use nix::{
 };
 use std::{
     ffi::c_void,
-    os::unix::prelude::{AsRawFd, FromRawFd},
     process::{Command, Stdio},
 };
 
@@ -65,7 +64,7 @@ fn main() {
 
     for i in 0..(BUFFER_SIZE / PAGE_SIZE) {
         unsafe {
-            p.offset(i as isize).write_bytes(0, 1);
+            p.offset((i * PAGE_SIZE) as isize).write_bytes(0, PAGE_SIZE);
         }
     }
 
@@ -85,23 +84,18 @@ fn main() {
 fn grep(pid: Pid) {
     let ps = Command::new("ps")
         .args(["-o", "pid,comm,vsz,rss,min_flt,maj_flt"])
-        // .stdout(Stdio::piped())
-        .spawn();
-    // .expect("failed to execute ps");
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed to execute ps");
+    let ps_out = ps.stdout.unwrap();
 
-    // let grep = Command::new("grep")
-    //     .arg(format!("'^ *{}'", pid))
-    //     .stdin(unsafe { Stdio::from_raw_fd(ps.stdout.as_ref().unwrap().as_raw_fd()) })
-    //     .output()
-    //     .map_err(|e| anyhow!(e))
-    //     .and_then(|ret| match ret.status.success() {
-    //         true => String::from_utf8(ret.stdout).map_err(|e| anyhow!(e)),
-    //         false => String::from_utf8(ret.stderr)
-    //             .map_err(|e| anyhow!(e))
-    //             .and_then(|std_err| bail!(std_err)),
-    //     });
-    match ps {
-        Ok(stdout) => println!("{:?}", stdout),
+    let regex = format!(r"^ *{}", pid);
+    let grep = Command::new("grep").arg(regex).stdin(ps_out).output();
+
+    match grep {
+        Ok(stdout) => {
+            println!("{}", String::from_utf8_lossy(stdout.stdout.as_ref()));
+        }
         Err(stderr) => {
             eprintln!("{}", stderr);
             std::process::exit(EXIT_FAILURE);
@@ -118,7 +112,7 @@ fn child_fn(p: *mut c_void) {
 
     for i in 0..(BUFFER_SIZE / PAGE_SIZE) {
         unsafe {
-            p.offset(i as isize).write_bytes(0, PAGE_SIZE);
+            p.offset((i * PAGE_SIZE) as isize).write_bytes(0, PAGE_SIZE);
         }
     }
 
