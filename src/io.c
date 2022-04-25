@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
         help = false;
     } else {
         fprintf(stderr, "kernel's help should be 'on' or 'off': %s\n", argv[2]);
+        exit(EXIT_FAILURE);
     }
 
     // 読み書きの種類を取得
