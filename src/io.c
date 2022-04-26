@@ -1,7 +1,16 @@
+#define _GNU_SOURCE
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/fs.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define PART_SIZE (1024 * 1024 * 1024) // 1GB
 #define ACCESS_SIZE (64 * 1024 * 1024) // 64MB
@@ -78,3 +87,37 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "access size(%d) should be multiple of block size: %s\n", access_size, argv[5]);
         exit(EXIT_FAILURE);
     }
+
+    int maxcount = part_size / block_size;
+    int count = access_size / block_size;
+    int *offset = malloc(maxcount * sizeof(int));
+    if (offset == NULL) {
+        err(EXIT_FAILURE, "malloc() failed");
+    }
+
+    int flag = O_RDWR | O_EXCL;
+    if (!help) {
+        flag |= O_DIRECT;
+    }
+
+    int fd;
+    fd = open(filename, flag);
+    if (fd == -1) {
+        err(EXIT_FAILURE, "open() failed");
+    }
+
+    int i;
+    for (i = 0; i < maxcount; i++) {
+        offset[i] = i;
+    }
+    if (random) {
+        for (i = 0; i < maxcount; i++) {
+            int j = rand() % maxcount;
+            int tmp = offset[j];
+            offset[i] = offset[j];
+            offset[j] = tmp;
+        }
+    }
+
+    int sector_size;
+}
