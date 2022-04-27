@@ -95,6 +95,7 @@ int main(int argc, char *argv[]) {
         err(EXIT_FAILURE, "malloc() failed");
     }
 
+    // `O_DIRECT` フラグを与えることで、ダイレクトI/Oを使う
     int flag = O_RDWR | O_EXCL;
     if (!help) {
         flag |= O_DIRECT;
@@ -119,5 +120,51 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // `ioctl()` によって、指定したデバイスに対応するストレージデバイスのセクタサイズを取得している
+    // https://manpages.ubuntu.com/manpages/jammy/ja/man2/ioctl.2.html
     int sector_size;
+    if (ioctl(fd, BLKSSZGET, &sector_size) == -1) {
+        err(EXIT_FAILURE, "ioctl() failed");
+    }
+
+    char *buf;
+    int e;
+    // https://manpages.ubuntu.com/manpages/jammy/en/man3/posix_memalign.3posix.html
+    // ストレージデバイスに受け渡しするデータを保持するバッファ用メモリ領域の確保には、 `malloc()` ではなく、
+    // `posix_memalign()` を使う。獲得するメモリの先頭アドレスを指定した数の倍数にする（アライメントする）。
+    // ダイレクト I/O に使用するバッファの先頭アドレスとサイズは、ストレージデバイスのセクタサイズの倍数になっている必要があるため。
+    e = posix_memalign((void **)&buf, sector_size, block_size);
+    if (e) {
+        errno = e;
+        err(EXIT_FAILURE, "posix_memalign() failed");
+    }
+
+    for (i = 0; i < count; i++) {
+        ssize_t ret;
+        if (lseek(fd, offset[i] * block_size, SEEK_SET) == -1) {
+            err(EXIT_FAILURE, "lseek() failed");
+        }
+        if (write_flag) {
+            ret = write(fd, buf, block_size);
+            if (ret == -1) {
+                err(EXIT_FAILURE, "write() failed");
+            }
+        } else {
+            ret = read(fd, buf, block_size);
+            if (ret == -1) {
+                err(EXIT_FAILURE, "read() failed");
+            }
+        }
+
+        // `fdatasync()` 関数によって、それより上の処理において発行している I/O の完了を待つ
+        // ダイレクト I/O 出ない通常の I/O の場合、 `write()` 関数は I/O の発行依頼をするだけで完了を待たないため
+        if (fdatasync(fd) == -1) {
+            err(EXIT_FAILURE, "fdatasync() failed");
+        }
+        if (close(fd) == -1) {
+            err(EXIT_FAILURE, "close() failed");
+        }
+
+        exit(EXIT_SUCCESS);
+    }
 }

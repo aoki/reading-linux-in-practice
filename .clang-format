@@ -1,0 +1,3 @@
+ReflowComments:  true
+PenaltyBreakComment: 0  # modified; was 300
+PenaltyBreakOpenParenthesis: 1  # modified; was 0
