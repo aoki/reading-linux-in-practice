@@ -1,12 +1,11 @@
 use nix::sys::mman::ProtFlags;
+use nix::sys::time::TimeSpec;
+use nix::time::{clock_gettime, ClockId};
 use nix::{
     libc::EXIT_FAILURE,
     sys::mman::{mmap, MapFlags},
 };
 use std::env;
-use nix::time::{clock_gettime, ClockId};
-use nix::libc::CLOCK_MONOTONIC;
-use nix::sys::time::TimeSpec;
 
 fn main() {
     let argv: Vec<String> = env::args().collect();
@@ -47,10 +46,12 @@ fn main() {
         Err(e) => {
             eprintln!("mmap() failed: {}", e);
             std::process::exit(EXIT_FAILURE);
-        },
-    }
+        }
+    };
 
     let before = get_time();
+
+    let after = get_time();
 }
 
 fn get_time() -> TimeSpec {
@@ -59,6 +60,6 @@ fn get_time() -> TimeSpec {
         Err(e) => {
             eprintln!("clock_gettime() failed: {}", e);
             std::process::exit(EXIT_FAILURE);
-        },
+        }
     }
 }
