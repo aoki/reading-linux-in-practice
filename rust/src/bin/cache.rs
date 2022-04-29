@@ -1,11 +1,16 @@
+use core::ffi::c_void;
 use nix::sys::mman::ProtFlags;
 use nix::sys::time::TimeSpec;
 use nix::time::{clock_gettime, ClockId};
 use nix::{
     libc::EXIT_FAILURE,
-    sys::mman::{mmap, MapFlags},
+    sys::mman::{mmap, munmap, MapFlags},
 };
 use std::env;
+
+const CACHE_LINE_SIZE_BYTE: usize = 64;
+const NLOOP: usize = 4 * 1024 * 1024 * 1024;
+const NSECS_PER_SEC: usize = 1_000_000_000;
 
 fn main() {
     let argv: Vec<String> = env::args().collect();
@@ -17,7 +22,7 @@ fn main() {
         std::process::exit(EXIT_FAILURE);
     }
 
-    let size = match argv[1].parse::<usize>() {
+    let size_byte = match argv[1].parse::<usize>() {
         Ok(s) => {
             if s <= 0 {
                 eprintln!("size should be >= 1: {}", s);
@@ -34,15 +39,15 @@ fn main() {
     let buffer = unsafe {
         mmap(
             std::ptr::null_mut(),
-            size,
+            size_byte,
             ProtFlags::PROT_READ | ProtFlags::PROT_WRITE,
             MapFlags::MAP_PRIVATE | MapFlags::MAP_ANONYMOUS,
             -1,
             0,
         )
     };
-    let buffer: *mut char = match buffer {
-        Ok(buf) => buf as *mut char,
+    let buffer: *mut c_void = match buffer {
+        Ok(buf) => buf,
         Err(e) => {
             eprintln!("mmap() failed: {}", e);
             std::process::exit(EXIT_FAILURE);
@@ -51,7 +56,27 @@ fn main() {
 
     let before = get_time();
 
+    for _ in 0..(NLOOP / (size_byte / CACHE_LINE_SIZE_BYTE)) {
+        for j in (0..size_byte).step_by(CACHE_LINE_SIZE_BYTE) {
+            unsafe {
+                buffer.offset(j as isize).write_bytes(0, 1);
+            }
+        }
+    }
+
     let after = get_time();
+
+    println!("{}\t{}", &argv[1], diff_nsec(&before, &after) / NLOOP);
+
+    if let Err(e) = unsafe { munmap(buffer as *mut c_void, size_byte) } {
+        eprintln!("mumap() failed: {}", e);
+        std::process::exit(EXIT_FAILURE);
+    };
+}
+
+fn diff_nsec(before: &TimeSpec, after: &TimeSpec) -> usize {
+    (after.tv_sec() as usize * NSECS_PER_SEC + after.tv_nsec() as usize)
+        - (before.tv_sec() as usize * NSECS_PER_SEC + before.tv_nsec() as usize)
 }
 
 fn get_time() -> TimeSpec {
