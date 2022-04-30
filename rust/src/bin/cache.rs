@@ -57,16 +57,22 @@ fn main() {
     let before = get_time();
 
     for _ in 0..(NLOOP / (size_byte / CACHE_LINE_SIZE_BYTE)) {
-        for j in (0..size_byte).step_by(CACHE_LINE_SIZE_BYTE) {
+        for j in 0..(size_byte / CACHE_LINE_SIZE_BYTE) {
             unsafe {
-                buffer.offset(j as isize).write_bytes(0, 1);
+                buffer
+                    .offset((j * CACHE_LINE_SIZE_BYTE) as isize)
+                    .write_bytes(0, CACHE_LINE_SIZE_BYTE);
             }
         }
     }
 
     let after = get_time();
 
-    println!("{}\t{}", &argv[1], diff_nsec(&before, &after) / NLOOP);
+    println!(
+        "{}\t{}",
+        &argv[1],
+        diff_nsec(&before, &after) as f64 / NLOOP as f64
+    );
 
     if let Err(e) = unsafe { munmap(buffer as *mut c_void, size_byte) } {
         eprintln!("mumap() failed: {}", e);
