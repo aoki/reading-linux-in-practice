@@ -56,6 +56,16 @@ fn main() {
 
     let before = get_time();
 
+    // for _ in 0..(NLOOP / (size_byte / CACHE_LINE_SIZE_BYTE)) {
+    //     for j in (0..size_byte).step_by(CACHE_LINE_SIZE_BYTE) {
+    //         unsafe {
+    //             buffer
+    //                 .offset(j as isize)
+    //                 .write_bytes(0, CACHE_LINE_SIZE_BYTE);
+    //         }
+    //     }
+    // }
+
     for _ in 0..(NLOOP / (size_byte / CACHE_LINE_SIZE_BYTE)) {
         for j in 0..(size_byte / CACHE_LINE_SIZE_BYTE) {
             unsafe {

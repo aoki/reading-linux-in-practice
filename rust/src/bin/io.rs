@@ -13,7 +13,7 @@
 //!     - 第5引数: 1回あたりのI/Oサイズ（Kバイト）
 
 use nix::libc::{malloc, EXIT_FAILURE};
-use std::{env, ffi::c_void, intrinsics::size_of};
+use std::{env, ffi::c_void};
 
 const PART_SIZE: usize = 1024 * 1024 * 1024; // 1GB
 const ACCESS_SIZE: usize = 64 * 1024 * 1024; // 64MB
