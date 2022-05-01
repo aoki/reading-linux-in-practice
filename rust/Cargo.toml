@@ -22,4 +22,4 @@ path = "src/sched_nice.rs"
 
 
 [profile.release]
-opt-level = 1
+# opt-level = 1

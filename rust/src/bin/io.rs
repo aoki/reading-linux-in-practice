@@ -12,11 +12,11 @@
 //!     - 第4引数: アクセスパターン（sec = シーケンシャルアクセス、 rand = ランダムアクセス）
 //!     - 第5引数: 1回あたりのI/Oサイズ（Kバイト）
 
-use nix::libc::EXIT_FAILURE;
-use std::env;
+use nix::libc::{malloc, EXIT_FAILURE};
+use std::{env, ffi::c_void, intrinsics::size_of};
 
-const PART_SIZE: usize = (1024 * 1024 * 1024); // 1GB
-const ACCESS_SIZE: usize = (64 * 1024 * 1024); // 64MB
+const PART_SIZE: usize = 1024 * 1024 * 1024; // 1GB
+const ACCESS_SIZE: usize = 64 * 1024 * 1024; // 64MB
 
 fn main() {
     let argv: Vec<String> = env::args().collect();
@@ -79,4 +79,18 @@ fn main() {
         );
         std::process::exit(EXIT_FAILURE);
     }
+
+    let max_count = PART_SIZE / block_size;
+    let count = ACCESS_SIZE / block_size;
+
+    let offset: *mut c_void;
+    unsafe {
+        offset = malloc(max_count * std::mem::size_of::<usize>());
+    }
+    if offset == std::ptr::null_mut() {
+        eprintln!("malloc() failed");
+        std::process::exit(EXIT_FAILURE);
+    }
+
+    // `O_DIRECT` フラグを与えることで、ダイレクトI/Oを使う
 }
