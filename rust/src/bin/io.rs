@@ -12,7 +12,7 @@
 //!     - 第4引数: アクセスパターン（sec = シーケンシャルアクセス、 rand = ランダムアクセス）
 //!     - 第5引数: 1回あたりのI/Oサイズ（Kバイト）
 
-use nix::libc::{malloc, EXIT_FAILURE};
+use nix::libc::{malloc, EXIT_FAILURE, O_EXCL, O_RDWR};
 use std::{env, ffi::c_void};
 
 const PART_SIZE: usize = 1024 * 1024 * 1024; // 1GB
@@ -93,4 +93,10 @@ fn main() {
     }
 
     // `O_DIRECT` フラグを与えることで、ダイレクトI/Oを使う
+    let mut flag = O_RDWR | O_EXCL;
+    if !help {
+        flag |= O_DIRECT;
+    }
+
+    let fd = open(filename, flag);
 }
